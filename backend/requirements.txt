@@ -8,3 +8,4 @@ PyPDF2
 transformers
 torch
 gunicorn
+langchain-text-splitters
