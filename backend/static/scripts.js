@@ -1,6 +1,4 @@
-
-const BASE_URL = "https://pdf-question-answering-system.onrender.com";
-// const chatBox = document.getElementById("chat-box");
+// 🔹 Chatbox init safely
 let chatBox;
 
 window.onload = function () {
@@ -8,12 +6,14 @@ window.onload = function () {
 };
 
 
+// 🔹 Show selected file name
 document.getElementById("pdfFile").addEventListener("change", function () {
   const file = this.files[0];
   document.getElementById("fileName").innerText = file ? "📄 " + file.name : "";
 });
 
 
+// 🔹 Upload PDF
 async function uploadPDF() {
   const fileInput = document.getElementById("pdfFile");
   const file = fileInput.files[0];
@@ -34,7 +34,7 @@ async function uploadPDF() {
   formData.append("file", file);
 
   try {
-    const res = await fetch("http://127.0.0.1:5000/upload", {
+    const res = await fetch("/upload", {
       method: "POST",
       body: formData
     });
@@ -44,13 +44,12 @@ async function uploadPDF() {
     }
 
     const data = await res.json();
-
     const filename = data.filename || "PDF";
 
-    // 🔥 CLEAR previous status
+    // 🔹 Clear status
     status.innerHTML = "";
 
-    // 🔥 CREATE NEW UI ELEMENT (guaranteed render)
+    // 🔹 Success UI
     const successBox = document.createElement("div");
     successBox.style.background = "#d4edda";
     successBox.style.color = "#155724";
@@ -64,28 +63,26 @@ async function uploadPDF() {
       📄 ${filename}
     `;
 
-    // 🔥 ADD TO UI
     status.appendChild(successBox);
 
-    // 🔥 ENABLE ASK BUTTON
-    const askBtn = document.getElementById("askBtn");
-    askBtn.disabled = false;
+    // 🔹 Enable Ask button
+    document.getElementById("askBtn").disabled = false;
 
-    // 🔥 SHOW IN CHAT ALSO (backup)
-    chatBox.innerHTML += `
-      <div class="message bot">
-        📄 <b>${filename}</b> uploaded successfully!<br>
-        👉 Now you can ask questions.
-      </div>
-    `;
+    // 🔹 Show in chat
+    if (chatBox) {
+      chatBox.innerHTML += `
+        <div class="message bot">
+          📄 <b>${filename}</b> uploaded successfully!<br>
+          👉 Now you can ask questions.
+        </div>
+      `;
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
 
-    chatBox.scrollTop = chatBox.scrollHeight;
-
-    // 🔥 RESET upload button
+    // 🔹 Reset button
     uploadBtn.disabled = false;
     uploadBtn.innerText = "Upload PDF";
 
-    // clear file input
     fileInput.value = "";
 
   } catch (err) {
@@ -101,6 +98,8 @@ async function uploadPDF() {
     uploadBtn.innerText = "Upload PDF";
   }
 }
+
+
 // 🔹 Ask Question
 async function askQuestion() {
   const input = document.getElementById("question");
@@ -108,23 +107,27 @@ async function askQuestion() {
 
   if (!question) return;
 
-  // 👤 user message
-  chatBox.innerHTML += `
-    <div class="message user">${question}</div>
-  `;
+  // 👤 User message
+  if (chatBox) {
+    chatBox.innerHTML += `
+      <div class="message user">${question}</div>
+    `;
+  }
 
   input.value = "";
 
-  // 🤖 loading
+  // 🤖 Loading
   const loadingId = "loading-" + Date.now();
-  chatBox.innerHTML += `
-    <div class="message bot" id="${loadingId}">⏳ Thinking...</div>
-  `;
 
-  chatBox.scrollTop = chatBox.scrollHeight;
+  if (chatBox) {
+    chatBox.innerHTML += `
+      <div class="message bot" id="${loadingId}">⏳ Thinking...</div>
+    `;
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
 
   try {
-    const res = await fetch(`${BASE_URL}/ask`, {
+    const res = await fetch("/ask", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -142,12 +145,9 @@ async function askQuestion() {
       answer = data.answer || "⚠️ No answer found";
     }
 
-    // format
     answer = answer.replace(/\n/g, "<br>");
 
     document.getElementById(loadingId).innerHTML = answer;
-
-    chatBox.scrollTop = chatBox.scrollHeight;
 
   } catch (err) {
     console.error("Ask Error:", err);
@@ -156,8 +156,8 @@ async function askQuestion() {
 }
 
 
-// 🔹 Enter key support
-document.getElementById("question").addEventListener("keypress", function(e) {
+// 🔹 Enter key support (modern)
+document.getElementById("question").addEventListener("keydown", function(e) {
   if (e.key === "Enter") {
     askQuestion();
   }
