@@ -3,19 +3,19 @@ from PyPDF2 import PdfReader
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.llms import HuggingFacePipeline
+# from langchain_community.llms import HuggingFacePipeline
 
-# ✅ Stable LLM (longer answers)
-llm = HuggingFacePipeline.from_model_id(
-    model_id="gpt2",
-    task="text-generation",
-    pipeline_kwargs={
-        "max_new_tokens": 150,
-        "temperature": 0.2,
-        "do_sample": False,
-        "repetition_penalty": 1.2
-    }
-)
+# # ✅ Stable LLM (longer answers)
+# llm = HuggingFacePipeline.from_model_id(
+#     model_id="gpt2",
+#     task="text-generation",
+#     pipeline_kwargs={
+#         "max_new_tokens": 150,
+#         "temperature": 0.2,
+#         "do_sample": False,
+#         "repetition_penalty": 1.2
+#     }
+# )
 
 # 🔹 Process PDF
 def process_pdf(filepath):
