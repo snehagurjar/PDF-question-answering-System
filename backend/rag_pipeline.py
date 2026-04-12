@@ -36,7 +36,9 @@ def process_pdf(filepath):
 
     chunks = splitter.create_documents([text])
 
-    embeddings = HuggingFaceEmbeddings()
+    embeddings = HuggingFaceEmbeddings(
+        model_name="all-MiniLM-L6-v2"
+    )
     vector_store = FAISS.from_documents(chunks, embeddings)
 
     return vector_store.as_retriever(search_kwargs={"k": 4})  # 🔥 more chunks
