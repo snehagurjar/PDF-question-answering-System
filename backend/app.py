@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify ,render_template
 from flask_cors import CORS
 import os
 from rag_pipeline import process_pdf, ask_question
@@ -13,7 +13,7 @@ retriever_store = {}
 
 @app.route("/")
 def home():
-    return "Backend running 🚀"
+    return render_template("index.html")
 
 
 @app.route("/upload", methods=["POST"])
