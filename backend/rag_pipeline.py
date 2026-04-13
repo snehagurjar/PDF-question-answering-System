@@ -33,20 +33,36 @@ def ask_question(question, chunks):
     best_chunk = ""
     best_score = 0
 
+    # 🔥 STEP 1: find best chunk
     for chunk in chunks:
         score = 0
         chunk_lower = chunk.lower()
 
         for word in keywords:
-            if word in chunk_lower:
-                # score += 1
-                score += chunk_lower.count(word)
+            score += chunk_lower.count(word)
 
         if score > best_score:
             best_score = score
             best_chunk = chunk
 
-    if best_chunk:
-        return best_chunk[:800]
+    if not best_chunk:
+        return "⚠️ No relevant answer found"
 
-    return "⚠️ No relevant answer found"
+    # 🔥 STEP 2: extract only relevant lines
+    lines = best_chunk.split("\n")
+    matched_lines = []
+
+    for line in lines:
+        line_lower = line.lower()
+        if len(line.strip()) < 30:
+            continue
+        for word in keywords:
+            if word in line_lower:
+                matched_lines.append(line.strip())
+                break
+
+    # 🔥 STEP 3: return only top lines (not full paragraph)
+    if matched_lines:
+        return "\n".join(matched_lines[:3])  # 👈 only 2–3 lines
+
+    return best_chunk[:300]
