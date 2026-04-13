@@ -23,59 +23,57 @@ def process_pdf(filepath):
 def ask_question(question, chunks):
     question = question.lower()
 
-    stopwords = {"what", "is", "the", "a", "an", "of", "to", "in", "and", "for"}
+    stopwords = {"what", "is", "the", "a", "an", "of", "to", "in", "and", "for", "are"}
 
     keywords = [
         word for word in question.split()
         if word not in stopwords and len(word) > 2
     ]
 
-    best_lines = []
+    best_line = ""
     best_score = 0
 
-    # 🔥 STEP 1: loop through all lines (NOT chunks)
     for chunk in chunks:
         lines = chunk.split("\n")
 
         for line in lines:
-            line_clean = line.strip()
-            line_lower = line_clean.lower()
+            line = line.strip()
+            line_lower = line.lower()
 
-            if len(line_clean) < 30:
+            # ❌ Skip useless lines
+            if (
+                len(line) < 40 or
+                line_lower.startswith("q") or
+                "interview" in line_lower or
+                "example" in line_lower
+            ):
                 continue
 
             score = 0
 
-            # 🔥 exact keyword match
+            # 🔥 Exact keyword match (important)
             for word in keywords:
                 if word in line_lower:
                     score += 10
 
-            # 🔥 boost important terms
-            if any(word in line_lower for word in keywords):
-                score += 5
+            # 🔥 Strong boost if full term exists
+            if " ".join(keywords) in line_lower:
+                score += 30
+
+            # 🔥 Penalty for unrelated keywords
+            unrelated_words = ["primary key", "durability", "normalization"]
+            for uw in unrelated_words:
+                if uw in line_lower and uw not in question:
+                    score -= 5
 
             if score > best_score:
                 best_score = score
-                best_lines = [line_clean]
+                best_line = line
 
-            elif score == best_score and score != 0:
-                best_lines.append(line_clean)
-
-    if not best_lines:
+    if not best_line or best_score < 10:
         return "⚠️ No relevant answer found"
 
-    # 🔥 STEP 2: clean answer
-    final_lines = []
+    # 🔥 CLEAN ANSWER
+    best_line = best_line.replace("Ans :", "").replace("Ans:", "")
 
-    for line in best_lines:
-        if line.lower().startswith("q"):
-            continue
-
-        line = line.replace("Ans :", "").replace("Ans:", "")
-
-        if line not in final_lines:
-            final_lines.append(line)
-
-    # 🔥 STEP 3: return combined answer
-    return " ".join(final_lines[:3])
+    return best_line.strip()
