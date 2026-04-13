@@ -10,31 +10,22 @@
 <div class="container">
   <h2>📄 PDF Chatbot Assistant</h2>
 
-  <!-- Upload Section -->
   <div class="upload">
     <input type="file" id="pdfFile" accept=".pdf" />
     <button onclick="uploadPDF()">Upload PDF</button>
   </div>
 
-  <!-- File name -->
   <p id="fileName"></p>
+  <p id="uploadStatus"></p>
 
-  <!-- Upload Status -->
-  <p id="uploadStatus" style="color: green; font-weight: bold;"></p>
-
-  <!-- Chat -->
   <div id="chat-box"></div>
 
-  <!-- Input -->
   <div class="input-area">
     <input id="question" placeholder="Ask something..." />
-    
-    <!-- Disabled until upload -->
     <button id="askBtn" onclick="askQuestion()" disabled>Ask</button>
   </div>
 </div>
 
-<!-- ✅ IMPORTANT: script end me hi hona chahiye -->
 <script src="/static/script.js"></script>
 
 </body>

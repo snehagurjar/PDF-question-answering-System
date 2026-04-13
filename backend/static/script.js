@@ -1,16 +1,15 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-  let chatBox = document.getElementById("chat-box");
+  const chatBox = document.getElementById("chat-box");
 
-  // 🔹 Show selected file name
   document.getElementById("pdfFile").addEventListener("change", function () {
     const file = this.files[0];
-    document.getElementById("fileName").innerText = file ? "📄 " + file.name : "";
+    document.getElementById("fileName").innerText =
+      file ? "📄 " + file.name : "";
   });
 
-  // 🔹 Upload PDF
+  // 🔹 Upload
   window.uploadPDF = async function () {
-    alert("Upload clicked");
 
     const fileInput = document.getElementById("pdfFile");
     const file = fileInput.files[0];
@@ -24,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     uploadBtn.disabled = true;
     uploadBtn.innerText = "Uploading...";
-    status.innerText = "⏳ Uploading PDF...";
+    status.innerText = "⏳ Uploading...";
 
     const formData = new FormData();
     formData.append("file", file);
@@ -36,44 +35,46 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       const data = await res.json();
-      const filename = data.filename || "PDF";
 
-      status.innerHTML = `✅ ${filename} uploaded successfully!`;
+      status.innerText = `✅ ${data.filename} uploaded`;
 
       document.getElementById("askBtn").disabled = false;
 
-      if (chatBox) {
-        chatBox.innerHTML += `
-          <div class="message bot">
-            📄 <b>${filename}</b> uploaded successfully!
-          </div>
-        `;
-      }
+      chatBox.innerHTML += `
+        <div class="message bot">
+          📄 ${data.filename} uploaded successfully!
+        </div>
+      `;
 
       uploadBtn.disabled = false;
       uploadBtn.innerText = "Upload PDF";
 
     } catch (err) {
       status.innerText = "❌ Upload failed";
+      uploadBtn.disabled = false;
+      uploadBtn.innerText = "Upload PDF";
     }
   };
 
-  // 🔹 Ask Question
+  // 🔹 Ask
   window.askQuestion = async function () {
+
     const input = document.getElementById("question");
     const question = input.value.trim();
 
     if (!question) return;
 
-    if (chatBox) {
-      chatBox.innerHTML += `<div class="message user">${question}</div>`;
-    }
+    chatBox.innerHTML += `
+      <div class="message user">${question}</div>
+    `;
 
-    const loadingId = "loading-" + Date.now();
+    input.value = "";
 
-    if (chatBox) {
-      chatBox.innerHTML += `<div id="${loadingId}">⏳ Thinking...</div>`;
-    }
+    const loadingId = "load-" + Date.now();
+
+    chatBox.innerHTML += `
+      <div id="${loadingId}">⏳ Thinking...</div>
+    `;
 
     try {
       const res = await fetch("/ask", {
@@ -93,12 +94,5 @@ document.addEventListener("DOMContentLoaded", function () {
       document.getElementById(loadingId).innerText = "❌ Error";
     }
   };
-
-  // 🔹 Enter key
-  document.getElementById("question").addEventListener("keydown", function(e) {
-    if (e.key === "Enter") {
-      askQuestion();
-    }
-  });
 
 });

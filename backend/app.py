@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify ,render_template
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import os
 from rag_pipeline import process_pdf, ask_question
@@ -9,7 +9,8 @@ CORS(app)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-retriever_store = {}
+pdf_text_store = {}  # 🔥 store plain text
+
 
 @app.route("/")
 def home():
@@ -19,7 +20,7 @@ def home():
 @app.route("/upload", methods=["POST"])
 def upload():
     try:
-        global retriever_store   # 🔥 IMPORTANT
+        global pdf_text_store
 
         if "file" not in request.files:
             return jsonify({"error": "No file uploaded"}), 400
@@ -33,24 +34,23 @@ def upload():
         file.save(filepath)
 
         print("📂 File received:", file.filename)
-        print("📁 Saved at:", filepath)
-        print("Returning filename:", file.filename)   # 🔥 ADD HERE
 
-        
-        # 🔥 CLEAR OLD DATA
-        retriever_store.clear()
+        # 🔥 clear old
+        pdf_text_store.clear()
 
-        # 🔥 PROCESS NEW PDF
-        retriever = process_pdf(filepath)
-        retriever_store["default"] = retriever
+        # 🔥 process pdf
+        text = process_pdf(filepath)
+        pdf_text_store["data"] = text
 
         return jsonify({
             "message": "Upload successful",
-            "filename": file.filename   # 🔥 ADD THIS LINE
-            })
+            "filename": file.filename
+        })
+
     except Exception as e:
         print("❌ Upload error:", str(e))
         return jsonify({"error": "Upload failed"}), 500
+
 
 @app.route("/ask", methods=["POST"])
 def ask():
@@ -58,18 +58,19 @@ def ask():
         data = request.json
         question = data.get("question")
 
-        if "default" not in retriever_store:
+        if "data" not in pdf_text_store:
             return jsonify({"answer": "⚠️ Please upload a PDF first"})
 
-        retriever = retriever_store["default"]  # 🔥 always latest
+        text = pdf_text_store["data"]
 
-        answer = ask_question(question, retriever)
+        answer = ask_question(question, text)
 
         return jsonify({"answer": answer})
 
     except Exception as e:
         print("❌ Ask error:", str(e))
         return jsonify({"answer": "❌ Error generating answer"})
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
