@@ -30,52 +30,49 @@ def ask_question(question, chunks):
         if word not in stopwords and len(word) > 2
     ]
 
-    best_chunk = ""
-    best_line_index = 0
+    best_paragraph = ""
     best_score = 0
 
+    # 🔥 STEP 1: break chunks into paragraphs
     for chunk in chunks:
-        lines = chunk.split("\n")
+    paragraphs = chunk.split("\n\n")
 
-        for i, line in enumerate(lines):
-            line_clean = line.strip()
-            line_lower = line_clean.lower()
+    for para in paragraphs:
+        para_clean = para.strip()
+        para_lower = para_clean.lower()
 
-            if len(line_clean) < 30:
-                continue
-
-            score = 0
-
-            for word in keywords:
-                if word in line_lower:
-                    score += 10
-
-            if any(x in line_lower for x in [" is ", " are ", " refers to"]):
-                score += 20
-
-            if score > best_score:
-                best_score = score
-                best_chunk = lines
-                best_line_index = i
-
-    if not best_chunk:
-        return "⚠️ No relevant answer found"
-
-    # 🔥 TAKE 3-4 LINES FROM BEST POSITION
-    answer_lines = best_chunk[best_line_index : best_line_index + 4]
-
-    clean_lines = []
-    for line in answer_lines:
-        line = line.strip()
-
-        if (
-            len(line) < 20 or
-            line.lower().startswith("q")
-        ):
+        if len(para_clean) < 40:
             continue
 
-        line = line.replace("Ans :", "").replace("Ans:", "")
+        score = 0
 
-        clean_lines.append(line)
+        # 🔥 1. keyword match
+        for word in keywords:
+            if word in para_lower:
+                score += 10
 
-    return "👉 " + " ".join(clean_lines)
+        # 🔥 2. definition boost
+        if any(x in para_lower for x in [" is ", " are ", " refers to", " defined as"]):
+            score += 20
+
+        # ✅ 🔥 YAHI ADD KARNA HAI (IMPORTANT)
+        if " ".join(keywords) in para_lower:
+            score += 40
+
+        # 🔥 3. penalty
+        unrelated = ["oop", "inheritance", "polymorphism"]
+        for u in unrelated:
+            if u in para_lower and u not in question:
+                score -= 10
+
+        if score > best_score:
+            best_score = score
+            best_paragraph = para_clean
+
+    if not best_paragraph or best_score < 15:
+        return "⚠️ No relevant answer found"
+
+    # 🔥 CLEAN OUTPUT
+    best_paragraph = best_paragraph.replace("Ans :", "").replace("Ans:", "")
+
+    return "👉 " + best_paragraph
