@@ -30,55 +30,52 @@ def ask_question(question, chunks):
         if word not in stopwords and len(word) > 2
     ]
 
-    best_chunk = ""
+    best_lines = []
     best_score = 0
 
+    # 🔥 STEP 1: loop through all lines (NOT chunks)
     for chunk in chunks:
-        chunk_lower = chunk.lower()
-        score = 0
+        lines = chunk.split("\n")
 
-        # 🔥 HIGH PRIORITY: full question match
-        if question in chunk_lower:
-            score += 100
+        for line in lines:
+            line_clean = line.strip()
+            line_lower = line_clean.lower()
 
-        # 🔥 MEDIUM PRIORITY: keyword match
-        for word in keywords:
-            if word in chunk_lower:
+            if len(line_clean) < 30:
+                continue
+
+            score = 0
+
+            # 🔥 exact keyword match
+            for word in keywords:
+                if word in line_lower:
+                    score += 10
+
+            # 🔥 boost important terms
+            if any(word in line_lower for word in keywords):
                 score += 5
 
-        # 🔥 EXTRA: multiple occurrences
-        for word in keywords:
-            score += chunk_lower.count(word)
+            if score > best_score:
+                best_score = score
+                best_lines = [line_clean]
 
-        if score > best_score:
-            best_score = score
-            best_chunk = chunk
+            elif score == best_score and score != 0:
+                best_lines.append(line_clean)
 
-    if not best_chunk:
+    if not best_lines:
         return "⚠️ No relevant answer found"
 
-    # 🔥 CLEAN ANSWER
-    lines = best_chunk.split("\n")
-    useful_lines = []
+    # 🔥 STEP 2: clean answer
+    final_lines = []
 
-    for line in lines:
-        line = line.strip()
-        line_lower = line.lower()
-
-        if (
-            len(line) < 40 or
-            line_lower.startswith("q") or
-            "interview" in line_lower
-        ):
+    for line in best_lines:
+        if line.lower().startswith("q"):
             continue
 
         line = line.replace("Ans :", "").replace("Ans:", "")
-        useful_lines.append(line)
 
-    # remove duplicates
-    clean_lines = []
-    for line in useful_lines:
-        if line not in clean_lines:
-            clean_lines.append(line)
+        if line not in final_lines:
+            final_lines.append(line)
 
-    return " ".join(clean_lines[:4])
+    # 🔥 STEP 3: return combined answer
+    return " ".join(final_lines[:3])
