@@ -1,164 +1,104 @@
-// 🔹 Chatbox init safely
-let chatBox;
+document.addEventListener("DOMContentLoaded", function () {
 
-window.onload = function () {
-  chatBox = document.getElementById("chat-box");
-};
+  let chatBox = document.getElementById("chat-box");
 
+  // 🔹 Show selected file name
+  document.getElementById("pdfFile").addEventListener("change", function () {
+    const file = this.files[0];
+    document.getElementById("fileName").innerText = file ? "📄 " + file.name : "";
+  });
 
-// 🔹 Show selected file name
-document.getElementById("pdfFile").addEventListener("change", function () {
-  const file = this.files[0];
-  document.getElementById("fileName").innerText = file ? "📄 " + file.name : "";
-});
+  // 🔹 Upload PDF
+  window.uploadPDF = async function () {
+    alert("Upload clicked");
 
+    const fileInput = document.getElementById("pdfFile");
+    const file = fileInput.files[0];
+    const status = document.getElementById("uploadStatus");
+    const uploadBtn = document.querySelector(".upload button");
 
-// 🔹 Upload PDF
-async function uploadPDF() {
-  const fileInput = document.getElementById("pdfFile");
-  const file = fileInput.files[0];
-  const status = document.getElementById("uploadStatus");
-  const uploadBtn = document.querySelector(".upload button");
-
-  if (!file) {
-    status.innerText = "⚠️ Please select a file first";
-    return;
-  }
-
-  // 🔥 Uploading state
-  uploadBtn.disabled = true;
-  uploadBtn.innerText = "Uploading...";
-  status.innerText = "⏳ Uploading PDF...";
-
-  const formData = new FormData();
-  formData.append("file", file);
-
-  try {
-    const res = await fetch("/upload", {
-      method: "POST",
-      body: formData
-    });
-
-    if (!res.ok) {
-      throw new Error("Upload failed");
+    if (!file) {
+      status.innerText = "⚠️ Please select a file first";
+      return;
     }
 
-    const data = await res.json();
-    const filename = data.filename || "PDF";
+    uploadBtn.disabled = true;
+    uploadBtn.innerText = "Uploading...";
+    status.innerText = "⏳ Uploading PDF...";
 
-    // 🔹 Clear status
-    status.innerHTML = "";
+    const formData = new FormData();
+    formData.append("file", file);
 
-    // 🔹 Success UI
-    const successBox = document.createElement("div");
-    successBox.style.background = "#d4edda";
-    successBox.style.color = "#155724";
-    successBox.style.padding = "12px";
-    successBox.style.borderRadius = "8px";
-    successBox.style.marginTop = "10px";
-    successBox.style.fontWeight = "bold";
+    try {
+      const res = await fetch("/upload", {
+        method: "POST",
+        body: formData
+      });
 
-    successBox.innerHTML = `
-      ✅ File Uploaded Successfully! <br>
-      📄 ${filename}
-    `;
+      const data = await res.json();
+      const filename = data.filename || "PDF";
 
-    status.appendChild(successBox);
+      status.innerHTML = `✅ ${filename} uploaded successfully!`;
 
-    // 🔹 Enable Ask button
-    document.getElementById("askBtn").disabled = false;
+      document.getElementById("askBtn").disabled = false;
 
-    // 🔹 Show in chat
+      if (chatBox) {
+        chatBox.innerHTML += `
+          <div class="message bot">
+            📄 <b>${filename}</b> uploaded successfully!
+          </div>
+        `;
+      }
+
+      uploadBtn.disabled = false;
+      uploadBtn.innerText = "Upload PDF";
+
+    } catch (err) {
+      status.innerText = "❌ Upload failed";
+    }
+  };
+
+  // 🔹 Ask Question
+  window.askQuestion = async function () {
+    const input = document.getElementById("question");
+    const question = input.value.trim();
+
+    if (!question) return;
+
     if (chatBox) {
-      chatBox.innerHTML += `
-        <div class="message bot">
-          📄 <b>${filename}</b> uploaded successfully!<br>
-          👉 Now you can ask questions.
-        </div>
-      `;
-      chatBox.scrollTop = chatBox.scrollHeight;
+      chatBox.innerHTML += `<div class="message user">${question}</div>`;
     }
 
-    // 🔹 Reset button
-    uploadBtn.disabled = false;
-    uploadBtn.innerText = "Upload PDF";
+    const loadingId = "loading-" + Date.now();
 
-    fileInput.value = "";
-
-  } catch (err) {
-    console.error("Upload Error:", err);
-
-    status.innerHTML = `
-      <div style="color:red; font-weight:bold;">
-        ❌ Upload failed. Try again.
-      </div>
-    `;
-
-    uploadBtn.disabled = false;
-    uploadBtn.innerText = "Upload PDF";
-  }
-}
-
-
-// 🔹 Ask Question
-async function askQuestion() {
-  const input = document.getElementById("question");
-  const question = input.value.trim();
-
-  if (!question) return;
-
-  // 👤 User message
-  if (chatBox) {
-    chatBox.innerHTML += `
-      <div class="message user">${question}</div>
-    `;
-  }
-
-  input.value = "";
-
-  // 🤖 Loading
-  const loadingId = "loading-" + Date.now();
-
-  if (chatBox) {
-    chatBox.innerHTML += `
-      <div class="message bot" id="${loadingId}">⏳ Thinking...</div>
-    `;
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
-
-  try {
-    const res = await fetch("/ask", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ question })
-    });
-
-    const data = await res.json();
-
-    let answer;
-
-    if (data.error) {
-      answer = "⚠️ " + data.error;
-    } else {
-      answer = data.answer || "⚠️ No answer found";
+    if (chatBox) {
+      chatBox.innerHTML += `<div id="${loadingId}">⏳ Thinking...</div>`;
     }
 
-    answer = answer.replace(/\n/g, "<br>");
+    try {
+      const res = await fetch("/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ question })
+      });
 
-    document.getElementById(loadingId).innerHTML = answer;
+      const data = await res.json();
 
-  } catch (err) {
-    console.error("Ask Error:", err);
-    document.getElementById(loadingId).innerText = "❌ Server error";
-  }
-}
+      document.getElementById(loadingId).innerHTML =
+        (data.answer || "No answer").replace(/\n/g, "<br>");
 
+    } catch (err) {
+      document.getElementById(loadingId).innerText = "❌ Error";
+    }
+  };
 
-// 🔹 Enter key support (modern)
-document.getElementById("question").addEventListener("keydown", function(e) {
-  if (e.key === "Enter") {
-    askQuestion();
-  }
+  // 🔹 Enter key
+  document.getElementById("question").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      askQuestion();
+    }
+  });
+
 });
