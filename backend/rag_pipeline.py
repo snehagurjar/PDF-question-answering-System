@@ -33,11 +33,20 @@ def ask_question(question, chunks):
     best_chunk = ""
     best_score = 0
 
-    # 🔥 STEP 1: find best chunk
     for chunk in chunks:
-        score = 0
         chunk_lower = chunk.lower()
+        score = 0
 
+        # 🔥 HIGH PRIORITY: full question match
+        if question in chunk_lower:
+            score += 100
+
+        # 🔥 MEDIUM PRIORITY: keyword match
+        for word in keywords:
+            if word in chunk_lower:
+                score += 5
+
+        # 🔥 EXTRA: multiple occurrences
         for word in keywords:
             score += chunk_lower.count(word)
 
@@ -48,7 +57,7 @@ def ask_question(question, chunks):
     if not best_chunk:
         return "⚠️ No relevant answer found"
 
-    # 🔥 STEP 2: extract useful lines
+    # 🔥 CLEAN ANSWER
     lines = best_chunk.split("\n")
     useful_lines = []
 
@@ -56,26 +65,20 @@ def ask_question(question, chunks):
         line = line.strip()
         line_lower = line.lower()
 
-        # ❌ skip unwanted
         if (
             len(line) < 40 or
             line_lower.startswith("q") or
-            "interview" in line_lower or
-            "vs" in line_lower
+            "interview" in line_lower
         ):
             continue
 
         line = line.replace("Ans :", "").replace("Ans:", "")
-
         useful_lines.append(line)
 
-    # 🔥 STEP 3: remove duplicates
+    # remove duplicates
     clean_lines = []
     for line in useful_lines:
         if line not in clean_lines:
             clean_lines.append(line)
 
-    # 🔥 STEP 4: take more lines for complete answer
-    final_answer = " ".join(clean_lines[:4])   # 👈 2 → 4 lines
-
-    return final_answer[:700]
+    return " ".join(clean_lines[:4])
