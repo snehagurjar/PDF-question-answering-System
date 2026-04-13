@@ -35,7 +35,7 @@ def ask_question(question, chunks):
 
     # 🔥 STEP 1: break chunks into paragraphs
     for chunk in chunks:
-    paragraphs = chunk.split("\n\n")
+        paragraphs = chunk.split("\n\n")
 
     for para in paragraphs:
         para_clean = para.strip()
