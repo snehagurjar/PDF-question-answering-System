@@ -48,21 +48,27 @@ def ask_question(question, chunks):
     if not best_chunk:
         return "⚠️ No relevant answer found"
 
-    # 🔥 STEP 2: extract only relevant lines
+    # 🔥 STEP 2: clean lines
     lines = best_chunk.split("\n")
-    matched_lines = []
+    useful_lines = []
 
     for line in lines:
-        line_lower = line.lower()
-        if len(line.strip()) < 30:
+        line = line.strip()
+
+        if (
+            len(line) < 40 or
+            "interview" in line.lower() or
+            "vs" in line.lower() or
+            "example" in line.lower()
+        ):
             continue
-        for word in keywords:
-            if word in line_lower:
-                matched_lines.append(line.strip())
-                break
 
-    # 🔥 STEP 3: return only top lines (not full paragraph)
-    if matched_lines:
-        return "\n".join(matched_lines[:3])  # 👈 only 2–3 lines
+        # remove "Ans:"
+        line = line.replace("Ans :", "").replace("Ans:", "")
 
-    return best_chunk[:300]
+        useful_lines.append(line)
+
+    # 🔥 STEP 3: combine into one clean answer
+    final_answer = " ".join(useful_lines[:2])
+
+    return final_answer[:500]
