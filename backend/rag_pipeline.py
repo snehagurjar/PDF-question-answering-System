@@ -30,54 +30,52 @@ def ask_question(question, chunks):
         if word not in stopwords and len(word) > 2
     ]
 
-    best_line = ""
+    best_chunk = ""
+    best_line_index = 0
     best_score = 0
 
     for chunk in chunks:
         lines = chunk.split("\n")
 
-        for line in lines:
-            line = line.strip()
-            line_lower = line.lower()
+        for i, line in enumerate(lines):
+            line_clean = line.strip()
+            line_lower = line_clean.lower()
 
-            # ❌ skip bad lines
-            if (
-                len(line) < 40 or
-                line_lower.startswith("q") or
-                "interview" in line_lower
-            ):
+            if len(line_clean) < 30:
                 continue
 
             score = 0
 
-            # 🔥 1. keyword match
             for word in keywords:
                 if word in line_lower:
                     score += 10
 
-            # 🔥 2. definition boost (VERY IMPORTANT)
-            if any(x in line_lower for x in [" is ", " are ", " refers to", " defined as"]):
+            if any(x in line_lower for x in [" is ", " are ", " refers to"]):
                 score += 20
-
-            # 🔥 3. exact keyword at start (BEST MATCH)
-            for word in keywords:
-                if line_lower.startswith(word):
-                    score += 30
-
-            # 🔥 4. penalty for unrelated concepts
-            unrelated = ["inheritance", "polymorphism", "abstraction"]
-            for u in unrelated:
-                if u in line_lower and u not in question:
-                    score -= 5
 
             if score > best_score:
                 best_score = score
-                best_line = line
+                best_chunk = lines
+                best_line_index = i
 
-    if not best_line or best_score < 15:
+    if not best_chunk:
         return "⚠️ No relevant answer found"
 
-    # 🔥 CLEAN
-    best_line = best_line.replace("Ans :", "").replace("Ans:", "")
+    # 🔥 TAKE 3-4 LINES FROM BEST POSITION
+    answer_lines = best_chunk[best_line_index : best_line_index + 4]
 
-    return best_line.strip()
+    clean_lines = []
+    for line in answer_lines:
+        line = line.strip()
+
+        if (
+            len(line) < 20 or
+            line.lower().startswith("q")
+        ):
+            continue
+
+        line = line.replace("Ans :", "").replace("Ans:", "")
+
+        clean_lines.append(line)
+
+    return "👉 " + " ".join(clean_lines)
