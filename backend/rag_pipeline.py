@@ -20,17 +20,24 @@ def ask_question(question, text):
     if not text:
         return "⚠️ No content found in PDF"
 
-    # 🔥 basic keyword search
-    question = question.lower()
-    lines = text.split("\n")
+    stopwords = {"what", "is", "the", "a", "an", "of", "to", "in", "and", "for"}
 
+    keywords = [
+        word.lower()
+        for word in question.split()
+        if word.lower() not in stopwords and len(word) > 3
+    ]
+
+    lines = text.split("\n")
     matched_lines = []
 
     for line in lines:
-        if any(word in line.lower() for word in question.split()):
-            matched_lines.append(line)
+        for word in keywords:
+            if word in line.lower():
+                matched_lines.append(line)
+                break
 
     if matched_lines:
-        return "\n".join(matched_lines[:10])  # top matches
+        return "\n".join(matched_lines[:5])
 
-    return text[:500]  # fallback
+    return "⚠️ No relevant answer found"
