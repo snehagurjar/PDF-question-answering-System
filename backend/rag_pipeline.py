@@ -20,59 +20,63 @@ def process_pdf(filepath):
 
     return chunks
     # 🔹 Ask Question (simple logic)
-def ask_question(question, chunks):
-    question = question.lower()
+def ask_question(question, retriever):
+    docs = retriever.get_relevant_documents(question)
 
-    stopwords = {"what", "is", "the", "a", "an", "of", "to", "in", "and", "for", "are"}
-
-    keywords = [
-        word for word in question.split()
-        if word not in stopwords and len(word) > 2
-    ]
-
-    best_paragraph = ""
-    best_score = 0
-
-    # 🔥 STEP 1: break chunks into paragraphs
-    for chunk in chunks:
-        paragraphs = chunk.split("\n\n")
-
-    for para in paragraphs:
-        para_clean = para.strip()
-        para_lower = para_clean.lower()
-
-        if len(para_clean) < 40:
-            continue
-
-        score = 0
-
-        # 🔥 1. keyword match
-        for word in keywords:
-            if word in para_lower:
-                score += 10
-
-        # 🔥 2. definition boost
-        if any(x in para_lower for x in [" is ", " are ", " refers to", " defined as"]):
-            score += 20
-
-        # ✅ 🔥 YAHI ADD KARNA HAI (IMPORTANT)
-        if " ".join(keywords) in para_lower:
-            score += 40
-
-        # 🔥 3. penalty
-        unrelated = ["oop", "inheritance", "polymorphism"]
-        for u in unrelated:
-            if u in para_lower and u not in question:
-                score -= 10
-
-        if score > best_score:
-            best_score = score
-            best_paragraph = para_clean
-
-    if not best_paragraph or best_score < 15:
+    if not docs:
         return "⚠️ No relevant answer found"
 
-    # 🔥 CLEAN OUTPUT
-    best_paragraph = best_paragraph.replace("Ans :", "").replace("Ans:", "")
+    question = question.lower()
+    keywords = [w for w in question.split() if len(w) > 2]
 
-    return "👉 " + best_paragraph
+    best_answer = ""
+    best_score = 0
+
+    for doc in docs:
+        text = doc.page_content
+
+        lines = text.split("\n")
+
+        for i in range(len(lines)):
+            line = lines[i].strip()
+            line_lower = line.lower()
+
+            # 🔥 find matching question line
+            if any(k in line_lower for k in keywords):
+
+                score = 0
+
+                # keyword match
+                for k in keywords:
+                    if k in line_lower:
+                        score += 10
+
+                # exact phrase boost
+                if " ".join(keywords) in line_lower:
+                    score += 40
+
+                # question format boost
+                if "what is" in line_lower or "q" in line_lower:
+                    score += 20
+
+                # 🔥 extract NEXT lines as answer
+                answer = ""
+                for j in range(i+1, min(i+6, len(lines))):
+                    next_line = lines[j].strip()
+
+                    if len(next_line) < 20:
+                        continue
+
+                    if next_line.lower().startswith("q"):
+                        break
+
+                    answer += next_line + " "
+
+                if score > best_score and answer:
+                    best_score = score
+                    best_answer = answer.strip()
+
+    if best_answer:
+        return best_answer
+
+    return "⚠️ No relevant answer found"
