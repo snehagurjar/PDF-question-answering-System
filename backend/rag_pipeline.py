@@ -48,27 +48,34 @@ def ask_question(question, chunks):
     if not best_chunk:
         return "⚠️ No relevant answer found"
 
-    # 🔥 STEP 2: clean lines
+    # 🔥 STEP 2: extract useful lines
     lines = best_chunk.split("\n")
     useful_lines = []
 
     for line in lines:
         line = line.strip()
+        line_lower = line.lower()
 
+        # ❌ skip unwanted
         if (
             len(line) < 40 or
-            "interview" in line.lower() or
-            "vs" in line.lower() or
-            "example" in line.lower()
+            line_lower.startswith("q") or
+            "interview" in line_lower or
+            "vs" in line_lower
         ):
             continue
 
-        # remove "Ans:"
         line = line.replace("Ans :", "").replace("Ans:", "")
 
         useful_lines.append(line)
 
-    # 🔥 STEP 3: combine into one clean answer
-    final_answer = " ".join(useful_lines[:2])
+    # 🔥 STEP 3: remove duplicates
+    clean_lines = []
+    for line in useful_lines:
+        if line not in clean_lines:
+            clean_lines.append(line)
 
-    return final_answer[:500]
+    # 🔥 STEP 4: take more lines for complete answer
+    final_answer = " ".join(clean_lines[:4])   # 👈 2 → 4 lines
+
+    return final_answer[:700]
