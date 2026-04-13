@@ -40,40 +40,44 @@ def ask_question(question, chunks):
             line = line.strip()
             line_lower = line.lower()
 
-            # ❌ Skip useless lines
+            # ❌ skip bad lines
             if (
                 len(line) < 40 or
                 line_lower.startswith("q") or
-                "interview" in line_lower or
-                "example" in line_lower
+                "interview" in line_lower
             ):
                 continue
 
             score = 0
 
-            # 🔥 Exact keyword match (important)
+            # 🔥 1. keyword match
             for word in keywords:
                 if word in line_lower:
                     score += 10
 
-            # 🔥 Strong boost if full term exists
-            if " ".join(keywords) in line_lower:
-                score += 30
+            # 🔥 2. definition boost (VERY IMPORTANT)
+            if any(x in line_lower for x in [" is ", " are ", " refers to", " defined as"]):
+                score += 20
 
-            # 🔥 Penalty for unrelated keywords
-            unrelated_words = ["primary key", "durability", "normalization"]
-            for uw in unrelated_words:
-                if uw in line_lower and uw not in question:
+            # 🔥 3. exact keyword at start (BEST MATCH)
+            for word in keywords:
+                if line_lower.startswith(word):
+                    score += 30
+
+            # 🔥 4. penalty for unrelated concepts
+            unrelated = ["inheritance", "polymorphism", "abstraction"]
+            for u in unrelated:
+                if u in line_lower and u not in question:
                     score -= 5
 
             if score > best_score:
                 best_score = score
                 best_line = line
 
-    if not best_line or best_score < 10:
+    if not best_line or best_score < 15:
         return "⚠️ No relevant answer found"
 
-    # 🔥 CLEAN ANSWER
+    # 🔥 CLEAN
     best_line = best_line.replace("Ans :", "").replace("Ans:", "")
 
     return best_line.strip()
