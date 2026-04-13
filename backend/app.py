@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 from rag_pipeline import process_pdf, ask_question
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
 
 UPLOAD_FOLDER = "uploads"
