@@ -12,55 +12,41 @@ def process_pdf(filepath):
 
     print("📊 Extracted text length:", len(text))
 
-    # 🔥 split into lines
-    lines = text.split("\n")
+    # 🔥 split into chunks (paragraphs)
+    chunks = text.split("\n\n")  # paragraph split
 
-    qa_pairs = []
-    current_q = ""
-    current_a = ""
+    # clean
+    chunks = [chunk.strip() for chunk in chunks if len(chunk.strip()) > 50]
 
-    for line in lines:
-        line = line.strip()
-
-        # detect question
-        if line.lower().startswith("q"):
-            if current_q and current_a:
-                qa_pairs.append((current_q, current_a))
-
-            current_q = line
-            current_a = ""
-
-        elif "ans" in line.lower():
-            current_a += line + " "
-
-        else:
-            if current_a:
-                current_a += line + " "
-
-    # add last
-    if current_q and current_a:
-        qa_pairs.append((current_q, current_a))
-
-    return qa_pairs
-# 🔹 Ask Question (simple logic)
-def ask_question(question, qa_pairs):
+    return chunks
+    # 🔹 Ask Question (simple logic)
+def ask_question(question, chunks):
     question = question.lower()
 
-    best_match = ""
+    stopwords = {"what", "is", "the", "a", "an", "of", "to", "in", "and", "for"}
+
+    keywords = [
+        word for word in question.split()
+        if word not in stopwords and len(word) > 2
+    ]
+
+    best_chunk = ""
     best_score = 0
 
-    for q, a in qa_pairs:
+    for chunk in chunks:
         score = 0
+        chunk_lower = chunk.lower()
 
-        for word in question.split():
-            if word in q.lower():
-                score += 1
+        for word in keywords:
+            if word in chunk_lower:
+                # score += 1
+                score += chunk_lower.count(word)
 
         if score > best_score:
             best_score = score
-            best_match = a
+            best_chunk = chunk
 
-    if best_match:
-        return best_match[:500]
+    if best_chunk:
+        return best_chunk[:800]
 
     return "⚠️ No relevant answer found"
