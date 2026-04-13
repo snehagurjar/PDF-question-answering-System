@@ -12,32 +12,55 @@ def process_pdf(filepath):
 
     print("📊 Extracted text length:", len(text))
 
-    return text  # 🔥 return plain text
-
-
-# 🔹 Ask Question (simple logic)
-def ask_question(question, text):
-    if not text:
-        return "⚠️ No content found in PDF"
-
-    stopwords = {"what", "is", "the", "a", "an", "of", "to", "in", "and", "for"}
-
-    keywords = [
-        word.lower()
-        for word in question.split()
-        if word.lower() not in stopwords and len(word) > 3
-    ]
-
+    # 🔥 split into lines
     lines = text.split("\n")
-    matched_lines = []
+
+    qa_pairs = []
+    current_q = ""
+    current_a = ""
 
     for line in lines:
-        for word in keywords:
-            if word in line.lower():
-                matched_lines.append(line)
-                break
+        line = line.strip()
 
-    if matched_lines:
-        return "\n".join(matched_lines[:5])
+        # detect question
+        if line.lower().startswith("q"):
+            if current_q and current_a:
+                qa_pairs.append((current_q, current_a))
+
+            current_q = line
+            current_a = ""
+
+        elif "ans" in line.lower():
+            current_a += line + " "
+
+        else:
+            if current_a:
+                current_a += line + " "
+
+    # add last
+    if current_q and current_a:
+        qa_pairs.append((current_q, current_a))
+
+    return qa_pairs
+# 🔹 Ask Question (simple logic)
+def ask_question(question, qa_pairs):
+    question = question.lower()
+
+    best_match = ""
+    best_score = 0
+
+    for q, a in qa_pairs:
+        score = 0
+
+        for word in question.split():
+            if word in q.lower():
+                score += 1
+
+        if score > best_score:
+            best_score = score
+            best_match = a
+
+    if best_match:
+        return best_match[:500]
 
     return "⚠️ No relevant answer found"
