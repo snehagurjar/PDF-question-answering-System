@@ -61,9 +61,13 @@
 #     return "⚠️ No relevant answer found"
 
 from PyPDF2 import PdfReader
-def process_pdf(filepath):
-    from PyPDF2 import PdfReader
+# 🔥 STEP 1: YAHI ADD KARNA HAI
+from sentence_transformers import SentenceTransformer
+import numpy as np
 
+# 🔥 MODEL LOAD (GLOBAL)
+model = SentenceTransformer("all-MiniLM-L6-v2")
+def process_pdf(filepath):
     reader = PdfReader(filepath)
 
     text = ""
@@ -71,7 +75,6 @@ def process_pdf(filepath):
         if page.extract_text():
             text += page.extract_text() + "\n"
 
-    # 🔥 better chunking
     chunks = []
     current = ""
 
@@ -85,39 +88,32 @@ def process_pdf(filepath):
     if current:
         chunks.append(current.strip())
 
-    return chunks
+    # 🔥 embeddings store करो
+    embeddings = model.encode(chunks)
 
-def ask_question(question, chunks):
-    question = question.lower()
+    return {"chunks": chunks, "embeddings": embeddings}
+def ask_question(question, data):
+    chunks = data["chunks"]
+    embeddings = data["embeddings"]
 
-    keywords = [w for w in question.split() if len(w) > 2]
+    q_embedding = model.encode(question)
 
-    best_chunk = ""
-    best_score = 0
+    best_index = -1
+    best_score = -1
 
-    for chunk in chunks:
-        chunk_lower = chunk.lower()
-
-        score = 0
-
-        for k in keywords:
-            if k in chunk_lower:
-                score += 10
-
-        # 🔥 semantic-like boost
-        if any(k in chunk_lower for k in keywords):
-            score += 20
+    for i, emb in enumerate(embeddings):
+        score = np.dot(q_embedding, emb) / (
+            np.linalg.norm(q_embedding) * np.linalg.norm(emb)
+        )
 
         if score > best_score:
             best_score = score
-            best_chunk = chunk
+            best_index = i
 
-    if not best_chunk:
+    if best_index == -1:
         return "⚠️ No relevant answer found"
 
-    # 🔥 FORMAT LIKE CHATGPT
-    return format_answer(best_chunk)
-
+    return format_answer(chunks[best_index])
 def format_answer(text):
     text = text.strip()
 
