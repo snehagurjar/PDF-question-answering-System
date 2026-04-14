@@ -69,25 +69,26 @@ API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/sent
 HEADERS = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
 
 
-# 🔹 get embedding from API
+# 🔹 get embedding from API (SAFE)
 def get_embedding(text):
     try:
         response = requests.post(API_URL, headers=HEADERS, json={"inputs": text})
 
         if response.status_code != 200:
-            return [0.0] * 384  # fallback
+            return None
 
         data = response.json()
 
         if isinstance(data, list):
             return data[0]
 
-        return [0.0] * 384
+        return None
 
     except:
-        return [0.0] * 384
+        return None
 
-# 🔹 Process PDF
+
+# 🔹 Process PDF (WITH EMBEDDINGS STORE)
 def process_pdf(filepath):
     reader = PdfReader(filepath)
 
@@ -109,26 +110,48 @@ def process_pdf(filepath):
     if current:
         chunks.append(current.strip())
 
-    return chunks   # 🔥 only chunks
-
-
-# 🔹 Ask Question (Semantic Search)
-def ask_question(question, chunks):
-    q_embedding = get_embedding(question)
-
-    best_chunk = ""
-    best_score = -1
+    # 🔥 embeddings generate ONCE
+    embeddings = []
 
     for chunk in chunks:
-        c_embedding = get_embedding(chunk)
+        emb = get_embedding(chunk)
+        if emb is not None:
+            embeddings.append(emb)
+        else:
+            embeddings.append([0.0] * 384)
 
-        score = np.dot(q_embedding, c_embedding) / (
-            np.linalg.norm(q_embedding) * np.linalg.norm(c_embedding)
+    return {
+        "chunks": chunks,
+        "embeddings": embeddings
+    }
+
+
+# 🔹 Ask Question (FAST + SEMANTIC)
+def ask_question(question, data):
+    chunks = data["chunks"]
+    embeddings = data["embeddings"]
+
+    q_embedding = get_embedding(question)
+
+    if q_embedding is None:
+        return "⚠️ Embedding API error"
+
+    best_score = -1
+    best_chunk = ""
+
+    for i, emb in enumerate(embeddings):
+
+        # skip invalid embeddings
+        if emb is None:
+            continue
+
+        score = np.dot(q_embedding, emb) / (
+            np.linalg.norm(q_embedding) * np.linalg.norm(emb)
         )
 
         if score > best_score:
             best_score = score
-            best_chunk = chunk
+            best_chunk = chunks[i]
 
     if not best_chunk:
         return "⚠️ No relevant answer found"
@@ -136,7 +159,7 @@ def ask_question(question, chunks):
     return format_answer(best_chunk)
 
 
-# 🔹 Format Answer
+# 🔹 Format Answer (CLEAN OUTPUT)
 def format_answer(text):
     text = text.strip()
     text = text.replace("\n", " ")
