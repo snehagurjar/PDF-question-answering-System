@@ -84,7 +84,6 @@ def get_embedding(text):
 
     except:
         return None
-# 🔹 Process PDF (WITH EMBEDDINGS STORE)
 def process_pdf(filepath):
     reader = PdfReader(filepath)
 
@@ -97,7 +96,7 @@ def process_pdf(filepath):
     current = ""
 
     for line in text.split("\n"):
-        if len(current) < 300:
+        if len(current) < 150:
             current += " " + line
         else:
             chunks.append(current.strip())
@@ -129,22 +128,13 @@ def ask_question(question, data):
 
     q_embedding = get_embedding(question)
 
-    # 🔥 अगर API fail हो जाए
     if q_embedding is None:
-        # 👉 fallback to keyword search
-        question = question.lower()
-        keywords = [w for w in question.split() if len(w) > 2]
+        return "⚠️ Embedding API error"
 
-        for chunk in chunks:
-            if any(k in chunk.lower() for k in keywords):
-                return format_answer(chunk)
-
-        return "⚠️ API failed, fallback used"
-
-    # 🔥 normal semantic search
     best_score = -1
     best_chunk = ""
 
+    # 🔥 find best chunk
     for i, emb in enumerate(embeddings):
         if emb is None:
             continue
@@ -157,11 +147,27 @@ def ask_question(question, data):
             best_score = score
             best_chunk = chunks[i]
 
-    if best_chunk:
-        return format_answer(best_chunk)
+    if not best_chunk:
+        return "⚠️ No relevant answer found"
 
-    return "⚠️ No relevant answer found"
-# 🔹 Format Answer (CLEAN OUTPUT)
+    # 🔥 STEP 2: extract relevant lines
+    question = question.lower()
+    keywords = [w for w in question.split() if len(w) > 2]
+
+    lines = best_chunk.split("\n")
+
+    answer = ""
+    for line in lines:
+        line_lower = line.lower()
+
+        if any(k in line_lower for k in keywords):
+            answer += line.strip() + " "
+
+    # 🔥 अगर कुछ नहीं मिला
+    if not answer:
+        answer = best_chunk[:300]
+
+    return format_answer(answer)
 def format_answer(text):
     text = text.strip()
     text = text.replace("\n", " ")
@@ -170,7 +176,7 @@ def format_answer(text):
 
     clean = []
     for s in sentences:
-        if len(s) > 30:
+        if len(s) > 20:
             clean.append(s.strip())
 
-    return "👉 " + ". ".join(clean[:4])
+    return "👉 " + ". ".join(clean[:3])
