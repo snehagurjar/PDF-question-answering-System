@@ -1,6 +1,6 @@
 # from PyPDF2 import PdfReader
 
-# # 🔹 Process PDF (NO FAISS, NO EMBEDDINGS)
+# # 🔹 Process PDF
 # def process_pdf(filepath):
 #     reader = PdfReader(filepath)
 
@@ -12,103 +12,125 @@
 
 #     print("📊 Extracted text length:", len(text))
 
-#     # 🔥 split into chunks (paragraphs)
-#     chunks = text.split("\n\n")  # paragraph split
+#     # 🔥 split into paragraphs
+#     chunks = text.split("\n\n")
 
-#     # clean
 #     chunks = [chunk.strip() for chunk in chunks if len(chunk.strip()) > 50]
 
 #     return chunks
-#     # 🔹 Ask Question (simple logic)
-# def ask_question(question, retriever):
-#     docs = retriever.get_relevant_documents(question)
 
-#     if not docs:
-#         return "⚠️ No relevant answer found"
 
+# # 🔹 Ask Question (UPDATED - NO retriever)
+# def ask_question(question, chunks):
 #     question = question.lower()
+
 #     keywords = [w for w in question.split() if len(w) > 2]
 
-#     for doc in docs:
-#         lines = doc.page_content.split("\n")
+#     best_answer = ""
+#     best_score = 0
+
+#     for chunk in chunks:
+#         lines = chunk.split("\n")
 
 #         for i, line in enumerate(lines):
 #             line_lower = line.lower()
 
 #             if any(k in line_lower for k in keywords):
 
+#                 score = sum(1 for k in keywords if k in line_lower)
+
 #                 answer = ""
 #                 for j in range(i+1, min(i+5, len(lines))):
 #                     next_line = lines[j].strip()
+
+#                     if len(next_line) < 20:
+#                         continue
 
 #                     if next_line.lower().startswith("q"):
 #                         break
 
 #                     answer += next_line + " "
 
-#                 if answer:
-#                     return answer.strip()
+#                 if score > best_score and answer:
+#                     best_score = score
+#                     best_answer = answer.strip()
+
+#     if best_answer:
+#         return best_answer
 
 #     return "⚠️ No relevant answer found"
 
 from PyPDF2 import PdfReader
-
-# 🔹 Process PDF
 def process_pdf(filepath):
+    from PyPDF2 import PdfReader
+
     reader = PdfReader(filepath)
 
     text = ""
     for page in reader.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text += page_text + "\n"
+        if page.extract_text():
+            text += page.extract_text() + "\n"
 
-    print("📊 Extracted text length:", len(text))
+    # 🔥 better chunking
+    chunks = []
+    current = ""
 
-    # 🔥 split into paragraphs
-    chunks = text.split("\n\n")
+    for line in text.split("\n"):
+        if len(current) < 300:
+            current += " " + line
+        else:
+            chunks.append(current.strip())
+            current = line
 
-    chunks = [chunk.strip() for chunk in chunks if len(chunk.strip()) > 50]
+    if current:
+        chunks.append(current.strip())
 
     return chunks
 
-
-# 🔹 Ask Question (UPDATED - NO retriever)
 def ask_question(question, chunks):
     question = question.lower()
 
     keywords = [w for w in question.split() if len(w) > 2]
 
-    best_answer = ""
+    best_chunk = ""
     best_score = 0
 
     for chunk in chunks:
-        lines = chunk.split("\n")
+        chunk_lower = chunk.lower()
 
-        for i, line in enumerate(lines):
-            line_lower = line.lower()
+        score = 0
 
-            if any(k in line_lower for k in keywords):
+        for k in keywords:
+            if k in chunk_lower:
+                score += 10
 
-                score = sum(1 for k in keywords if k in line_lower)
+        # 🔥 semantic-like boost
+        if any(k in chunk_lower for k in keywords):
+            score += 20
 
-                answer = ""
-                for j in range(i+1, min(i+5, len(lines))):
-                    next_line = lines[j].strip()
+        if score > best_score:
+            best_score = score
+            best_chunk = chunk
 
-                    if len(next_line) < 20:
-                        continue
+    if not best_chunk:
+        return "⚠️ No relevant answer found"
 
-                    if next_line.lower().startswith("q"):
-                        break
+    # 🔥 FORMAT LIKE CHATGPT
+    return format_answer(best_chunk)
 
-                    answer += next_line + " "
+def format_answer(text):
+    text = text.strip()
 
-                if score > best_score and answer:
-                    best_score = score
-                    best_answer = answer.strip()
+    # 🔥 remove junk
+    text = text.replace("\n", " ")
 
-    if best_answer:
-        return best_answer
+    # 🔥 split into sentences
+    sentences = text.split(". ")
 
-    return "⚠️ No relevant answer found"
+    clean = []
+    for s in sentences:
+        if len(s) > 30:
+            clean.append(s.strip())
+
+    # 🔥 limit length
+    return "👉 " + ". ".join(clean[:4])
