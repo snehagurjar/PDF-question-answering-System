@@ -74,20 +74,16 @@ def get_embedding(text):
     try:
         response = requests.post(API_URL, headers=HEADERS, json={"inputs": text})
 
-        if response.status_code != 200:
-            return None
+        if response.status_code == 200:
+            data = response.json()
+            if isinstance(data, list):
+                return data[0]
 
-        data = response.json()
-
-        if isinstance(data, list):
-            return data[0]
-
+        # 🔥 fallback (keyword based)
         return None
 
     except:
         return None
-
-
 # 🔹 Process PDF (WITH EMBEDDINGS STORE)
 def process_pdf(filepath):
     reader = PdfReader(filepath)
@@ -133,15 +129,23 @@ def ask_question(question, data):
 
     q_embedding = get_embedding(question)
 
+    # 🔥 अगर API fail हो जाए
     if q_embedding is None:
-        return "⚠️ Embedding API error"
+        # 👉 fallback to keyword search
+        question = question.lower()
+        keywords = [w for w in question.split() if len(w) > 2]
 
+        for chunk in chunks:
+            if any(k in chunk.lower() for k in keywords):
+                return format_answer(chunk)
+
+        return "⚠️ API failed, fallback used"
+
+    # 🔥 normal semantic search
     best_score = -1
     best_chunk = ""
 
     for i, emb in enumerate(embeddings):
-
-        # skip invalid embeddings
         if emb is None:
             continue
 
@@ -153,12 +157,10 @@ def ask_question(question, data):
             best_score = score
             best_chunk = chunks[i]
 
-    if not best_chunk:
-        return "⚠️ No relevant answer found"
+    if best_chunk:
+        return format_answer(best_chunk)
 
-    return format_answer(best_chunk)
-
-
+    return "⚠️ No relevant answer found"
 # 🔹 Format Answer (CLEAN OUTPUT)
 def format_answer(text):
     text = text.strip()
