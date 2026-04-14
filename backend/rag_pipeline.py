@@ -59,14 +59,35 @@
 #         return best_answer
 
 #     return "⚠️ No relevant answer found"
-
 from PyPDF2 import PdfReader
-# 🔥 STEP 1: YAHI ADD KARNA HAI
-from sentence_transformers import SentenceTransformer
+import requests
 import numpy as np
+import os
 
-# 🔥 MODEL LOAD (GLOBAL)
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# 🔥 HF API
+API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+HEADERS = {"Authorization": f"Bearer {os.getenv('HF_TOKEN')}"}
+
+
+# 🔹 get embedding from API
+def get_embedding(text):
+    try:
+        response = requests.post(API_URL, headers=HEADERS, json={"inputs": text})
+
+        if response.status_code != 200:
+            return [0.0] * 384  # fallback
+
+        data = response.json()
+
+        if isinstance(data, list):
+            return data[0]
+
+        return [0.0] * 384
+
+    except:
+        return [0.0] * 384
+
+# 🔹 Process PDF
 def process_pdf(filepath):
     reader = PdfReader(filepath)
 
@@ -88,39 +109,38 @@ def process_pdf(filepath):
     if current:
         chunks.append(current.strip())
 
-    # 🔥 embeddings store करो
-    embeddings = model.encode(chunks)
+    return chunks   # 🔥 only chunks
 
-    return {"chunks": chunks, "embeddings": embeddings}
-def ask_question(question, data):
-    chunks = data["chunks"]
-    embeddings = data["embeddings"]
 
-    q_embedding = model.encode(question)
+# 🔹 Ask Question (Semantic Search)
+def ask_question(question, chunks):
+    q_embedding = get_embedding(question)
 
-    best_index = -1
+    best_chunk = ""
     best_score = -1
 
-    for i, emb in enumerate(embeddings):
-        score = np.dot(q_embedding, emb) / (
-            np.linalg.norm(q_embedding) * np.linalg.norm(emb)
+    for chunk in chunks:
+        c_embedding = get_embedding(chunk)
+
+        score = np.dot(q_embedding, c_embedding) / (
+            np.linalg.norm(q_embedding) * np.linalg.norm(c_embedding)
         )
 
         if score > best_score:
             best_score = score
-            best_index = i
+            best_chunk = chunk
 
-    if best_index == -1:
+    if not best_chunk:
         return "⚠️ No relevant answer found"
 
-    return format_answer(chunks[best_index])
+    return format_answer(best_chunk)
+
+
+# 🔹 Format Answer
 def format_answer(text):
     text = text.strip()
-
-    # 🔥 remove junk
     text = text.replace("\n", " ")
 
-    # 🔥 split into sentences
     sentences = text.split(". ")
 
     clean = []
@@ -128,5 +148,4 @@ def format_answer(text):
         if len(s) > 30:
             clean.append(s.strip())
 
-    # 🔥 limit length
     return "👉 " + ". ".join(clean[:4])

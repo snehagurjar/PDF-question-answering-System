@@ -9,3 +9,5 @@ transformers
 torch
 gunicorn
 langchain-text-splitters
+requests
+numpy
